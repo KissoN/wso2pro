@@ -1,0 +1,116 @@
+version: "2"
+
+services:
+
+  wso2umdb:
+    container_name: wso2umdb
+    hostname: wso2umdb
+    networks:
+      - wso2am
+    image: dhr.thprom.ru:5000/postgres:9.5.1-1.pgdg80.1
+    volumes:
+      - ./data/wso2umdb/data:/var/lib/postgresql/data
+      - ./etc/umdb/postgresql.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=umdb
+      - POSTGRES_PASSWORD=123
+    expose:
+      - 5432
+    ports:
+      - "5432:5432"
+
+  wso2regdb:
+    container_name: wso2regdb
+    hostname: wso2regdb
+    networks:
+      - wso2am
+    image: dhr.thprom.ru:5000/postgres:9.5.1-1.pgdg80.1
+    volumes:
+      - ./data/wso2regdb/data:/var/lib/postgresql/data
+      - ./etc/regdb/postgresql.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=registry
+      - POSTGRES_PASSWORD=123
+    expose:
+      - 5432
+    ports:
+      - "5433:5432"
+
+  wso2am:
+    container_name: wso2am
+    hostname: wso2am
+    networks:
+      - wso2am
+    image: "dhr.thprom.ru:5000/wso2am:${MVN_PROJECT_VERSION}"
+    links:
+      - wso2umdb
+      - wso2regdb
+    volumes:
+      - ./data/wso2am/tmp:/tmp
+      - ./etc/wso2am/master-datasources.xml:/opt/wso2am-2.0.0/repository/conf/datasources/master-datasources.xml
+      - ./etc/wso2am/user-mgt.xml:/opt/wso2am-2.0.0/repository/conf/user-mgt.xml
+      - ./etc/wso2am/registry.xml:/opt/wso2am-2.0.0/repository/conf/registry.xml
+      - ./etc/wso2am/publisher-site.json:/opt/wso2am-2.0.0/repository/deployment/server/jaggeryapps/publisher/site/conf/site.json
+      - ./etc/wso2am/store-site.json:/opt/wso2am-2.0.0/repository/deployment/server/jaggeryapps/store/site/conf/site.json
+      - ./etc/postgresql-9.4-1201-jdbc4.jar:/opt/wso2am-2.0.0/repository/components/lib/postgresql-9.4-1201-jdbc4.jar
+    expose:
+      - 9443
+    ports:
+      - "9443:9443"
+
+  wso2is:
+    container_name: wso2is
+    hostname: wso2is
+    networks:
+      - wso2am
+    image: "dhr.thprom.ru:5000/wso2is:${MVN_PROJECT_VERSION}"
+    links:
+      - wso2umdb
+      - wso2regdb
+    volumes:
+      - ./data/wso2is/tmp:/tmp
+      - ./etc/wso2is/master-datasources.xml:/opt/wso2is-5.3.0/repository/conf/datasources/master-datasources.xml
+      - ./etc/wso2is/user-mgt.xml:/opt/wso2is-5.3.0/repository/conf/user-mgt.xml
+      - ./etc/wso2is/registry.xml:/opt/wso2is-5.3.0/repository/conf/registry.xml
+      - ./etc/wso2is/local_policy.jar:/usr/lib/jvm/java-8-oracle/jre/lib/security/local_policy.jar
+      - ./etc/wso2is/US_export_policy.jar:/usr/lib/jvm/java-8-oracle/jre/lib/security/US_export_policy.jar
+      - ./etc/postgresql-9.4-1201-jdbc4.jar:/opt/wso2is-5.3.0/repository/components/lib/postgresql-9.4-1201-jdbc4.jar
+    expose:
+      - 9443
+    ports:
+      - "9444:9443"
+
+  api1:
+    container_name: api1
+    hostname: api1
+    networks:
+      - wso2am
+    image: "dhr.thprom.ru:5000/wso2am.api:${MVN_PROJECT_VERSION}"
+    links:
+      - wso2am
+    volumes:
+      - ./data/app1/:/tmp/logs/
+    expose:
+      - 8081
+    ports:
+      - "8081:8081"
+
+  api2:
+    container_name: api2
+    hostname: api2
+    networks:
+      - wso2am
+    image: "dhr.thprom.ru:5000/wso2am.api:${MVN_PROJECT_VERSION}"
+    links:
+      - wso2am
+    volumes:
+      - ./data/app2/:/tmp/logs/
+    expose:
+      - 8081
+    ports:
+      - "8082:8081"
+
+networks:
+  wso2am:
+    # Use the overlay driver for multi-host communication
+    driver: bridge
